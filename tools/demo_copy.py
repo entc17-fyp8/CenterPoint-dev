@@ -80,6 +80,7 @@ def main():
     points_list = [] 
     gt_annos = [] 
     detections  = [] 
+    iterations = 0
 
     for i, data_batch in enumerate(data_loader):
         info = dataset._nusc_infos[i]
@@ -99,6 +100,9 @@ def main():
             detections.append(output)
 
         points_list.append(points.T)
+        iterations += 1
+        if iterations >300:
+            break
     
     print('Done model inference. Please wait a minute, the matplotlib is a little slow...')
     
