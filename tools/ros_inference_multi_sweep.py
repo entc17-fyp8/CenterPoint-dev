@@ -17,7 +17,7 @@ from sensor_msgs.msg import PointCloud2, PointField
 from jsk_recognition_msgs.msg import BoundingBox, BoundingBoxArray
 from pyquaternion import Quaternion
 
-from det3d import __version__, torchie
+# from det3d import __version__, torchie
 from det3d.models import build_detector
 from det3d.torchie import Config
 from det3d.core.input.voxel_generator import VoxelGenerator
@@ -292,7 +292,8 @@ def get_xyz_points(cloud_array, remove_nans=True, dtype=np.float):
     points[..., 0] = cloud_array['x']
     points[..., 1] = cloud_array['y']
     points[..., 2] = cloud_array['z']
-    points[..., 3] = cloud_array['intensity']
+    # points[..., 3] = cloud_array['intensity']
+    points[..., 3] = cloud_array['i']
     return points
 
 
@@ -380,8 +381,12 @@ if __name__ == "__main__":
 
     global proc
     # CenterPoint
-    config_path = 'configs/centerpoint/nusc_centerpoint_pp_02voxel_circle_nms_demo.py'
-    model_path = 'models/last.pth'
+    # config_path = 'configs/centerpoint/nusc_centerpoint_pp_02voxel_circle_nms_demo.py'
+    # model_path = 'models/last.pth'
+    
+    config_path = '/workspace/CenterPoint/configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py'
+    model_path = '/workspace/Checkpoints/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z/epoch_20.pth'
+
 
     proc_1 = Processor_ROS(config_path, model_path)
 
@@ -393,7 +398,7 @@ if __name__ == "__main__":
                        "/points_raw",
                        "/aligned/point_cloud",
                        "/merged_cloud",
-                       "/lidar_top",
+                       "/lidar/top",
                        "/roi_pclouds"]
     sub_lidar = rospy.Subscriber(
         sub_lidar_topic[5], PointCloud2, rslidar_callback, queue_size=1, buff_size=2**24)
