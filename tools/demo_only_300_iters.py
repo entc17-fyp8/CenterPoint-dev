@@ -52,8 +52,8 @@ def convert_box(info):
     return detection 
 
 def main():
-    # cfg = Config.fromfile('configs/nusc/pp/nusc_centerpoint_pp_02voxel_two_pfn_10sweep_demo.py')
-    cfg = Config.fromfile('configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn_flip.py')
+    # cfg = Config.fromfile('configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_dcn_flip.py')
+    cfg = Config.fromfile('configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py')
     
     model = build_detector(cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
 
@@ -69,8 +69,9 @@ def main():
         pin_memory=False,
     )
 
-    # checkpoint = load_checkpoint(model, 'work_dirs/centerpoint_pillar_512_demo/latest.pth', map_location="cpu")
-    checkpoint = load_checkpoint(model, '../Checkpoints/nusc_0075_dcn_flip_track/voxelnet_converted.pth', map_location="cpu")
+    # checkpoint = load_checkpoint(model, '../Checkpoints/nusc_0075_dcn_flip_track/voxelnet_converted.pth', map_location="cpu")
+    checkpoint = load_checkpoint(model, '../Checkpoints/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z/epoch_20.pth', map_location="cpu")
+
     model.eval()
 
     model = model.cuda()
@@ -80,6 +81,7 @@ def main():
     points_list = [] 
     gt_annos = [] 
     detections  = [] 
+    iterations = 0
 
     for i, data_batch in enumerate(data_loader):
         info = dataset._nusc_infos[i]
@@ -99,6 +101,9 @@ def main():
             detections.append(output)
 
         points_list.append(points.T)
+        iterations += 1
+        if iterations >300:
+            break
     
     print('Done model inference. Please wait a minute, the matplotlib is a little slow...')
     
