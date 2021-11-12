@@ -86,6 +86,8 @@ test_cfg = dict(
 dataset_type = "NuScenesDataset"
 nsweeps = 10
 data_root = "data/nuScenes"
+# data_root = "data/nuScenes/v1.0-test"
+
 
 db_sampler = dict(
     type="GT-AUG",
@@ -142,7 +144,7 @@ voxel_generator = dict(
     range=[-54, -54, -5.0, 54, 54, 3.0],
     voxel_size=[0.075, 0.075, 0.2],
     max_points_in_voxel=10,
-    max_voxel_num=[120000, 160000],
+    max_voxel_num=[120000, 160000], #(train, test)
 )
 
 train_pipeline = [
@@ -166,6 +168,8 @@ test_pipeline = [
 train_anno = "data/nuScenes/infos_train_10sweeps_withvelo_filter_True.pkl"
 val_anno = "data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl"
 test_anno = None
+# test_anno = "data/nuScenes/v1.0-test/infos_test_10sweeps_withvelo.pkl"
+
 
 data = dict(
     samples_per_gpu=4,
