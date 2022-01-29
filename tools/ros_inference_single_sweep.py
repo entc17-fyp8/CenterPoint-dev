@@ -212,6 +212,9 @@ def rslidar_callback(msg):
             bbox.dimensions.x = float(dt_box_lidar[i][4])
             bbox.dimensions.y = float(dt_box_lidar[i][3])
             bbox.dimensions.z = float(dt_box_lidar[i][5])
+            bbox.velocity.x = float(dt_box_lidar[i][6])
+            bbox.velocity.y = float(dt_box_lidar[i][7])
+            bbox.velocity.z = float(0)
             bbox.value = scores[i]
             bbox.label = int(types[i])
             arr_bbox.boxes.append(bbox)
@@ -220,6 +223,7 @@ def rslidar_callback(msg):
     arr_bbox.header.stamp = msg.header.stamp
     if len(arr_bbox.boxes) is not 0:
         pub_arr_bbox.publish(arr_bbox)
+        print('Published to ROS')
         arr_bbox.boxes = []
     else:
         arr_bbox.boxes = []
@@ -240,17 +244,10 @@ if __name__ == "__main__":
     proc_1.initialize()
     
     rospy.init_node('centerpoint_ros_node')
-    sub_lidar_topic = [ "/velodyne_points", 
-                        "/top/rslidar_points",
-                        "/points_raw", 
-                        "/lidar_protector/merged_cloud", 
-                        "/merged_cloud",
-                        "/lidar/top", 
-                        "/roi_pclouds"]
     
-    sub_ = rospy.Subscriber(sub_lidar_topic[5], PointCloud2, rslidar_callback, queue_size=1, buff_size=2**24)
+    sub_ = rospy.Subscriber("/lidar/top", PointCloud2, rslidar_callback, queue_size=1, buff_size=2**24)
     
-    pub_arr_bbox = rospy.Publisher("pp_boxes", BoundingBoxArray, queue_size=1)
+    pub_arr_bbox = rospy.Publisher("bboxes_detected", BoundingBoxArray, queue_size=1)
 
     print("[+] CenterPoint ros_node has started!")    
     rospy.spin()
