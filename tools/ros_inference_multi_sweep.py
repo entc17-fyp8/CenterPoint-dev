@@ -393,15 +393,8 @@ if __name__ == "__main__":
     proc_1.initialize()
 
     rospy.init_node('centerpoint_ros_node')
-    sub_lidar_topic = ["/velodyne_points",
-                       "/top/rslidar_points",
-                       "/points_raw",
-                       "/aligned/point_cloud",
-                       "/merged_cloud",
-                       "/lidar/top",
-                       "/roi_pclouds"]
-    sub_lidar = rospy.Subscriber(
-        sub_lidar_topic[5], PointCloud2, rslidar_callback, queue_size=1, buff_size=2**24)
+    
+    sub_lidar = rospy.Subscriber("/lidar/top", PointCloud2, rslidar_callback, queue_size=1, buff_size=2**24)
 
     sub_odom_topic = ["/golfcar/odom",
                       "/aligned/odometry",
@@ -410,7 +403,7 @@ if __name__ == "__main__":
     sub_odom = rospy.Subscriber(
         sub_odom_topic[2], Odometry, odom_callback, queue_size=10, buff_size=2**10, tcp_nodelay=True)
 
-    pub_arr_bbox = rospy.Publisher("pp_boxes", BoundingBoxArray, queue_size=1)
+    pub_arr_bbox = rospy.Publisher("bboxes_detected", BoundingBoxArray, queue_size=1)
     pub_sync_cloud = rospy.Publisher("sync_5sweeps_cloud", PointCloud2, queue_size=1)
 
     print("[+] CenterPoint ros_node has started!")
