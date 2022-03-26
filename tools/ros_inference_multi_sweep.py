@@ -159,17 +159,20 @@ class Processor_ROS:
         self.imu2lidar = transform_matrix(lidar2imu_t, lidar2imu_r, inverse=False)
 
     def run(self):
-
+        tt_1 = time.time()
         # print(f"input points shape: {points.shape}")
         # num_features = 5
         # self.points = points.reshape([-1, num_features])
 
+        tt_1_b = time.time()
+        # Generate voxels from points (Using GPU with numba)
         voxels, coords, num_points = self.voxel_generator.generate(self.points)
         num_voxels = np.array([voxels.shape[0]], dtype=np.int64)
         grid_size = self.voxel_generator.grid_size
-        coords = np.pad(coords, ((0, 0), (1, 0)),
-                        mode='constant', constant_values=0)
+        coords = np.pad(coords, ((0, 0), (1, 0)),  mode='constant', constant_values=0)
+        print("  voxelization time cost:", time.time() - tt_1_b)
 
+        # Move tensors to GPU
         voxels = torch.tensor(voxels, dtype=torch.float32, device=self.device)
         coords = torch.tensor(coords, dtype=torch.int32, device=self.device)
         num_points = torch.tensor(
@@ -178,7 +181,6 @@ class Processor_ROS:
             num_voxels, dtype=torch.int32, device=self.device)
         # grid_size = torch.tensor(grid_size, dtype=torch.float32, device=self.device)
 
-        # t = time.time()
         self.inputs = dict(
             voxels=voxels,
             num_points=num_points,
@@ -186,14 +188,17 @@ class Processor_ROS:
             coordinates=coords,
             shape=[grid_size]  # simulate a batch of one example 
         )
-        torch.cuda.synchronize()
-        t = time.time()
 
+        # Waits for all kernels in all streams on a CUDA device to complete.
+        torch.cuda.synchronize()
+        tt_2 = time.time()
+
+        # Run NN forward pass
         with torch.no_grad():
             outputs = self.net(self.inputs, return_loss=False)[0]
 
         torch.cuda.synchronize()
-        print("  network predict time cost:", time.time() - t)
+        print("  network predict time cost:", time.time() - tt_2)
 
         outputs = remove_low_score_nu(outputs, 0.45)
 
@@ -204,6 +209,8 @@ class Processor_ROS:
         types = outputs["label_preds"].detach().cpu().numpy()
 
         boxes_lidar[:, -1] = -boxes_lidar[:, -1] - np.pi / 2
+
+        print(f"  total cost time: {time.time() - tt_1}")
 
         return scores, boxes_lidar, types
 
@@ -292,8 +299,8 @@ def get_xyz_points(cloud_array, remove_nans=True, dtype=np.float):
     points[..., 0] = cloud_array['x']
     points[..., 1] = cloud_array['y']
     points[..., 2] = cloud_array['z']
-    # points[..., 3] = cloud_array['intensity']
-    points[..., 3] = cloud_array['i']
+    points[..., 3] = cloud_array['intensity']
+    # points[..., 3] = cloud_array['i']
     return points
 
 
@@ -324,7 +331,7 @@ def xyz_array_to_pointcloud2(points_sum, stamp=None, frame_id=None):
 
 
 def rslidar_callback(msg):
-    # t_t = time.time()
+    tt_0 = time.time()
     arr_bbox = BoundingBoxArray()
     msg_cloud = ros_numpy.point_cloud2.pointcloud2_to_array(msg)
     np_p = get_xyz_points(msg_cloud, True)
@@ -359,7 +366,7 @@ def rslidar_callback(msg):
                 bbox.value = scores[i]
                 bbox.label = int(types[i])
                 arr_bbox.boxes.append(bbox)
-        # print("total callback time: ", time.time() - t_t)
+        print("total callback time: ", time.time() - tt_0)
         arr_bbox.header.frame_id = msg.header.frame_id
         arr_bbox.header.stamp = msg.header.stamp
         if len(arr_bbox.boxes) is not 0:
@@ -384,9 +391,13 @@ if __name__ == "__main__":
     # config_path = 'configs/centerpoint/nusc_centerpoint_pp_02voxel_circle_nms_demo.py'
     # model_path = 'models/last.pth'
     
+    #### VoxelNet
     config_path = '/workspace/CenterPoint/configs/nusc/voxelnet/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z.py'
     model_path = '/workspace/Checkpoints/nusc_centerpoint_voxelnet_0075voxel_fix_bn_z/epoch_20.pth'
-
+    
+    #### PointPillars
+    # config_path = '/workspace/CenterPoint/configs/nusc/pp/nusc_centerpoint_pp_02voxel_two_pfn_10sweep.py'
+    # model_path = '/workspace/Checkpoints/nusc_02_pp/latest.pth'
 
     proc_1 = Processor_ROS(config_path, model_path)
 
@@ -396,12 +407,9 @@ if __name__ == "__main__":
     
     sub_lidar = rospy.Subscriber("/lidar/top", PointCloud2, rslidar_callback, queue_size=1, buff_size=2**24)
 
-    sub_odom_topic = ["/golfcar/odom",
-                      "/aligned/odometry",
-                      "/odom"]
 
     sub_odom = rospy.Subscriber(
-        sub_odom_topic[2], Odometry, odom_callback, queue_size=10, buff_size=2**10, tcp_nodelay=True)
+        '/odom', Odometry, odom_callback, queue_size=10, buff_size=2**10, tcp_nodelay=True)
 
     pub_arr_bbox = rospy.Publisher("bboxes_detected", BoundingBoxArray, queue_size=1)
     pub_sync_cloud = rospy.Publisher("sync_5sweeps_cloud", PointCloud2, queue_size=1)
